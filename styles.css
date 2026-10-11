@@ -1,0 +1,60 @@
+/* Ribbon dividers (from the Ribbon Divider plugin). */
+.side-dock-actions .side-dock-ribbon-action.pnm-ribbon-divider {
+  height: 1px;
+  width: 70%;
+  padding: 4px 0;
+  cursor: default;
+}
+
+.side-dock-actions .side-dock-ribbon-action.pnm-ribbon-divider:hover {
+  background-color: transparent;
+}
+
+.side-dock-actions .side-dock-ribbon-action.pnm-ribbon-divider::before {
+  content: "";
+  display: block;
+  height: 1px;
+  width: 100%;
+  background-color: var(--icon-color);
+  opacity: 0.5;
+}
+
+/* Settings and suggestions. */
+.pnm-icon-preview {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-end: var(--size-4-2);
+  color: var(--icon-color);
+  vertical-align: middle;
+}
+
+.pnm-icon-preview svg {
+  width: var(--icon-s);
+  height: var(--icon-s);
+}
+
+.pnm-suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1);
+}
+
+.pnm-note-row .setting-item-control {
+  flex-wrap: wrap;
+}
+
+.pnm-note-row .setting-item-control input[type="text"] {
+  width: 9em;
+}
+
+.pnm-note-row .setting-item-control input.pnm-path-input {
+  width: 14em;
+}
+
+.pnm-note-row .setting-item-description.pnm-warning {
+  color: var(--text-warning);
+}
+
+.pnm-divider-row .setting-item-name {
+  color: var(--text-muted);
+}

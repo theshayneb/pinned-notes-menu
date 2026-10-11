@@ -1,0 +1,10 @@
+{
+  "id": "pinned-notes-menu",
+  "name": "Pinned Notes Menu",
+  "version": "0.0.1",
+  "minAppVersion": "1.4.10",
+  "description": "Pin notes to the ribbon or a quick menu, and separate ribbon icons with dividers.",
+  "author": "theshayneb",
+  "authorUrl": "https://github.com/theshayneb",
+  "isDesktopOnly": false
+}
