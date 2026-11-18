@@ -1,6 +1,6 @@
 {
   "name": "pinned-notes-menu",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Pin notes to the Obsidian ribbon or a quick menu, and separate ribbon icons with dividers",
   "main": "main.js",
   "scripts": {

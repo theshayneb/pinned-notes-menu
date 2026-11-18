@@ -44,6 +44,10 @@ It combines and extends two MIT-licensed plugins:
 
 CSS snippets that target `.ribbon-divider` keep working: dividers carry that class as well as `pnm-ribbon-divider`.
 
+## Syncing between devices
+
+Settings are merged rather than replaced when Obsidian Sync (or another sync tool) brings in a copy from another device: the newest change to each pinned note, divider and setting wins, removed notes stay removed, and new pins are kept, even when a device comes back online after days. Keep the plugin up to date on every device: on version 0.0.1, notes you unpin come back.
+
 ## Customizing dividers
 
 ```css

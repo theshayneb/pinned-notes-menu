@@ -6,10 +6,14 @@ import {
   OpenTarget,
   PinnedDivider,
   PinnedNote,
+  addItems,
   createDivider,
   createNote,
   displayTitle,
+  editNote,
   moveItem,
+  removeItems,
+  setPref,
 } from './items'
 import { FileSuggest, IconSuggest } from './suggest'
 
@@ -31,6 +35,11 @@ export class PinnedNotesMenuSettingTab extends PluginSettingTab {
 
   display(): void {
     this.pwRender()
+  }
+
+  /** Redraws the tab if it is open, after settings synced from another device were merged in. */
+  pwRefresh(): void {
+    if (this.containerEl.isShown()) this.pwRender()
   }
 
   /** Redraws the tab, keeping the scroll position. */
@@ -55,7 +64,7 @@ export class PinnedNotesMenuSettingTab extends PluginSettingTab {
       const setting = new Setting(listEl)
       if (item.type === 'note') this.renderNote(setting, item)
       else this.renderDivider(setting, item)
-      this.addRowButtons(setting, index)
+      this.addRowButtons(setting, item.id, index === 0, index === settings.items.length - 1)
     })
 
     new Setting(containerEl)
@@ -63,14 +72,14 @@ export class PinnedNotesMenuSettingTab extends PluginSettingTab {
         .setButtonText('Add note')
         .setCta()
         .onClick(async () => {
-          settings.items.push(createNote(''))
+          addItems(plugin.settings, [createNote('')])
           await plugin.saveSettings()
           this.pwRender()
         }))
       .addButton((button) => button
         .setButtonText('Add divider')
         .onClick(async () => {
-          settings.items.push(createDivider())
+          addItems(plugin.settings, [createDivider()])
           await plugin.saveSettings()
           this.pwRender()
         }))
@@ -84,7 +93,7 @@ export class PinnedNotesMenuSettingTab extends PluginSettingTab {
       .addToggle((toggle) => toggle
         .setValue(settings.showRibbonIcons)
         .onChange(async (value) => {
-          settings.showRibbonIcons = value
+          setPref(plugin.settings, 'showRibbonIcons', value)
           await plugin.saveSettings()
         }))
 
@@ -94,7 +103,7 @@ export class PinnedNotesMenuSettingTab extends PluginSettingTab {
       .addToggle((toggle) => toggle
         .setValue(settings.showMenuButton)
         .onChange(async (value) => {
-          settings.showMenuButton = value
+          setPref(plugin.settings, 'showMenuButton', value)
           await plugin.saveSettings()
         }))
 
@@ -103,8 +112,8 @@ export class PinnedNotesMenuSettingTab extends PluginSettingTab {
       .setDesc('Any icon name from lucide.dev that Obsidian includes.')
     const menuIconPreview = menuIconSetting.controlEl.createSpan({ cls: 'pnm-icon-preview' })
     const updateMenuIcon = (value: string) => {
-      settings.menuIcon = value.trim() || DEFAULT_MENU_ICON
-      setIcon(menuIconPreview, settings.menuIcon)
+      setPref(plugin.settings, 'menuIcon', value.trim() || DEFAULT_MENU_ICON)
+      setIcon(menuIconPreview, plugin.settings.menuIcon)
       plugin.requestSave()
     }
     setIcon(menuIconPreview, settings.menuIcon)
@@ -122,7 +131,7 @@ export class PinnedNotesMenuSettingTab extends PluginSettingTab {
       .addDropdown((dropdown) => {
         for (const [value, label] of Object.entries(OPEN_TARGET_LABELS)) dropdown.addOption(value, label)
         dropdown.setValue(settings.openIn).onChange(async (value) => {
-          settings.openIn = value as OpenTarget
+          setPref(plugin.settings, 'openIn', value as OpenTarget)
           await plugin.saveSettings()
         })
       })
@@ -133,7 +142,7 @@ export class PinnedNotesMenuSettingTab extends PluginSettingTab {
       .addToggle((toggle) => toggle
         .setValue(settings.focusExisting)
         .onChange(async (value) => {
-          settings.focusExisting = value
+          setPref(plugin.settings, 'focusExisting', value)
           await plugin.saveSettings()
         }))
 
@@ -171,8 +180,8 @@ export class PinnedNotesMenuSettingTab extends PluginSettingTab {
     }
     refresh()
 
-    const update = (change: Partial<PinnedNote>) => {
-      Object.assign(note, change)
+    const update = (change: Partial<Pick<PinnedNote, 'title' | 'path' | 'icon'>>) => {
+      editNote(note, change)
       refresh()
       plugin.requestSave()
     }
@@ -198,11 +207,11 @@ export class PinnedNotesMenuSettingTab extends PluginSettingTab {
     setting.setClass('pnm-divider-row').setName('Divider')
   }
 
-  private addRowButtons(setting: Setting, index: number): void {
+  /** Buttons act on the item id, not its position, since a merge can change the list under them. */
+  private addRowButtons(setting: Setting, id: string, isFirst: boolean, isLast: boolean): void {
     const plugin = this.pwPlugin
-    const items = plugin.settings.items
     const move = async (delta: number) => {
-      plugin.settings.items = moveItem(items, index, delta)
+      moveItem(plugin.settings, id, delta)
       await plugin.saveSettings()
       this.pwRender()
     }
@@ -210,18 +219,18 @@ export class PinnedNotesMenuSettingTab extends PluginSettingTab {
       .addExtraButton((button) => button
         .setIcon('arrow-up')
         .setTooltip('Move up')
-        .setDisabled(index === 0)
+        .setDisabled(isFirst)
         .onClick(() => void move(-1)))
       .addExtraButton((button) => button
         .setIcon('arrow-down')
         .setTooltip('Move down')
-        .setDisabled(index === items.length - 1)
+        .setDisabled(isLast)
         .onClick(() => void move(1)))
       .addExtraButton((button) => button
         .setIcon('trash-2')
         .setTooltip('Remove')
         .onClick(async () => {
-          plugin.settings.items = items.filter((_, i) => i !== index)
+          removeItems(plugin.settings, [id])
           await plugin.saveSettings()
           this.pwRender()
         }))

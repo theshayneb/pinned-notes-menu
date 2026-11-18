@@ -5,15 +5,20 @@ import {
   OpenTarget,
   PinnedNote,
   PinnedNotesMenuSettings,
+  addItems,
   applyRename,
   createNote,
   displayTitle,
   iconForExtension,
   importLegacy,
   isNote,
+  mergeSettings,
   normalizeSettings,
   pathMatches,
+  removeItems,
   ribbonTitles,
+  sameSettings,
+  serializeSettings,
 } from './items'
 import { PinnedNotesMenuSettingTab } from './settings'
 import { PinnedNoteModal } from './suggest'
@@ -33,13 +38,17 @@ const PANE_FOR_TARGET: Record<OpenTarget, PaneType | false> = {
 export default class PinnedNotesMenuPlugin extends Plugin {
   settings!: PinnedNotesMenuSettings
   private pwRibbonIcons: { actionId: string; el: HTMLElement }[] = []
+  private pwSettingTab: PinnedNotesMenuSettingTab | null = null
+  /** Runs reads and writes of data.json one at a time. */
+  private pwSyncQueue: Promise<void> = Promise.resolve()
   /** Saves after typing pauses, so settings text fields don't write data.json on every key. */
   requestSave: Debouncer<[], void> = debounce(() => void this.saveSettings(), 600, true)
 
   async onload(): Promise<void> {
     await this.loadSettings()
     this.renderRibbon()
-    this.addSettingTab(new PinnedNotesMenuSettingTab(this.app, this))
+    this.pwSettingTab = new PinnedNotesMenuSettingTab(this.app, this)
+    this.addSettingTab(this.pwSettingTab)
 
     this.addCommand({
       id: 'open-pinned-note',
@@ -90,11 +99,48 @@ export default class PinnedNotesMenuPlugin extends Plugin {
     this.settings = normalizeSettings(await this.loadData())
   }
 
-  /** Saves settings and redraws the ribbon. */
+  /**
+   * Saves settings and redraws the ribbon. Merges with data.json first, so a
+   * device whose settings in memory are out of date can't overwrite newer
+   * changes synced from another device.
+   */
   async saveSettings(): Promise<void> {
     this.requestSave.cancel()
-    await this.saveData(this.settings)
-    this.renderRibbon()
+    await this.pwSync(true)
+  }
+
+  /** Called by Obsidian when Sync (or anything else) changes data.json. */
+  async onExternalSettingsChange(): Promise<void> {
+    await this.pwSync(false)
+  }
+
+  private pwSync(redraw: boolean): Promise<void> {
+    this.pwSyncQueue = this.pwSyncQueue
+      .then(() => this.pwSyncNow(redraw))
+      .catch((error) => console.error('Pinned Notes Menu: could not sync settings', error))
+    return this.pwSyncQueue
+  }
+
+  /**
+   * Merges data.json into the settings in memory, writes the result back if
+   * data.json was missing anything (repairing a stale copy from another
+   * device), and redraws when something changed.
+   */
+  private async pwSyncNow(redraw: boolean): Promise<void> {
+    let raw: unknown = null
+    try {
+      raw = await this.loadData()
+    } catch (error) {
+      // A half-synced or damaged file: merge with nothing, which writes a good copy back.
+      console.error('Pinned Notes Menu: could not read data.json', error)
+    }
+    const disk = normalizeSettings(raw)
+    const merged = mergeSettings(this.settings, disk)
+    const changedHere = !sameSettings(merged, this.settings)
+    this.settings = merged
+    if (!sameSettings(merged, disk)) await this.saveData(serializeSettings(merged))
+    if (redraw || changedHere) this.renderRibbon()
+    if (changedHere) this.pwSettingTab?.pwRefresh()
   }
 
   // ── Ribbon ──────────────────────────────────────────────────────────
@@ -240,13 +286,14 @@ export default class PinnedNotesMenuPlugin extends Plugin {
   }
 
   async pinFile(file: TFile): Promise<void> {
-    this.settings.items.push(createNote(file.path, '', iconForExtension(file.extension)))
+    addItems(this.settings, [createNote(file.path, '', iconForExtension(file.extension))])
     await this.saveSettings()
     new Notice(`Pinned ${file.basename}`)
   }
 
   async unpinFile(file: TFile): Promise<void> {
-    this.settings.items = this.settings.items.filter((item) => !(isNote(item) && pathMatches(item.path, file.path)))
+    const ids = this.settings.items.filter((item) => isNote(item) && pathMatches(item.path, file.path)).map((item) => item.id)
+    removeItems(this.settings, ids)
     await this.saveSettings()
     new Notice(`Unpinned ${file.basename}`)
   }
@@ -269,7 +316,7 @@ export default class PinnedNotesMenuPlugin extends Plugin {
       new Notice('Nothing new to import from the original pinned notes and ribbon divider plugins.')
       return
     }
-    this.settings.items.push(...notes, ...dividers)
+    addItems(this.settings, [...notes, ...dividers])
     await this.saveSettings()
     new Notice(`Imported ${notes.length} notes and ${dividers.length} dividers. You can now turn off the old plugins.`)
   }

@@ -2,6 +2,15 @@
 
 All notable changes to Pinned Notes Menu will be documented in this file.
 
+## [0.0.2] - 2026-11-18
+
+### Fixed
+- Obsidian Sync: a device with out-of-date settings no longer overwrites changes made on another device. Before, a phone or tablet that had been offline could bring back notes you unpinned elsewhere, or drop ones you pinned, the next time it pinned, unpinned or renamed something.
+  - Settings are now merged instead of replaced: when Sync changes them, and again before every save. The newest edit of each pinned note, divider and display setting wins.
+  - Removed notes and dividers are remembered, so an older copy can't bring them back. Notes pinned on any device are kept.
+  - Each item keeps its own place in the order, so the list order is the same on every device after a merge, and the newest move wins.
+  - Settings saved by version 0.0.1 are still read. Until a device is updated, notes pinned there still sync, but notes unpinned there come back. Update the plugin on every device.
+
 ## [0.0.1] - 2026-10-11
 
 ### Added

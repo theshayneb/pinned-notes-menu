@@ -25,6 +25,7 @@ npm run build
 
 - `src/items.ts` holds the data model and pure helpers (unit tested in `tests/`); it must not import `obsidian`.
 - Ribbon icons are identified by Obsidian as `<plugin id>:<title>`, so `ribbonTitles` makes titles unique. Removing icons without a restart uses the undocumented `leftRibbon.removeRibbonAction`, guarded.
+- Settings sync across devices that may hold stale copies. Every change goes through the helpers in `src/items.ts` (`addItems`, `removeItems`, `moveItem`, `editNote`, `setPref`, `applyRename`) so it gets a timestamp, and every save goes through `saveSettings`, which merges with `data.json` before writing. Never assign settings fields directly or call `saveData` elsewhere.
 - UI strings must be in sentence case (Obsidian lint rules).
 - Don't give subclasses of Obsidian classes members that may clash with undocumented internals; use a `pw` prefix.
 - `npm install` needs `legacy-peer-deps` (set in `.npmrc`) because of a vitest peer-dependency resolution bug.
